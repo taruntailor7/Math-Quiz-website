@@ -9,12 +9,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(
-  cors({
-    origin: "https://caimera-math-quiz.netlify.app", // Allow only your frontend domain
-    methods: ["GET", "POST"],
-  })
-);
+app.use(cors());
+app.use(express.json());
 
 const port = process.env.PORT || 5000;
 console.log("port", port);
