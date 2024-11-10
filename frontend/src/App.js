@@ -11,7 +11,7 @@ function App() {
 
   useEffect(() => {
     // Initialize socket connection
-    const newSocket = io("http://localhost:5000", {
+    const newSocket = io("http://math-quiz-website.onrender.com", {
       transports: ["websocket"],
       cors: {
         withCredentials: true,
