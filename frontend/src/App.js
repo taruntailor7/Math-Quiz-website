@@ -73,7 +73,7 @@ function App() {
         newSocket.disconnect();
       }
     };
-  }, []);
+  }, [isLocked]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
