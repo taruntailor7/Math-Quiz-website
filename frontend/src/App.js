@@ -1,70 +1,83 @@
-import React, { useEffect, useState } from 'react';
-import io from 'socket.io-client';
+import React, { useEffect, useState } from "react";
+import io from "socket.io-client";
 
-const socket = io('https://math-quiz-website.onrender.com');
+// const socket = io("https://math-quiz-website.onrender.com");
 
 function App() {
-    const [question, setQuestion] = useState('');
-    const [answer, setAnswer] = useState('');
-    const [message, setMessage] = useState('');
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [message, setMessage] = useState("");
+  const [socket, setSocket] = useState(null);
 
-    useEffect(() => {
-        // Listen for the new question event from the server
-        socket.on('newQuestion', (data) => {
-            setQuestion(data.question);
-            setMessage('');
-        });
+  useEffect(() => {
+    // Initialize socket with proper configuration
+    const newSocket = io("https://math-quiz-website.onrender.com", {
+      transports: ["websocket", "polling"],
+      cors: {
+        withCredentials: true,
+      },
+    });
 
-        // Listen for the winner event and display the winner message
-        socket.on('winner', (data) => {
-            setMessage(`User ${data.user} answered correctly! New question in a few seconds...`);
-        });
+    // Set socket in state
+    setSocket(newSocket);
 
-        // Listen for incorrect answers and display an error message
-        socket.on('incorrect', () => {
-            setMessage('Incorrect answer, try again!');
-            
-            // Clear the incorrect answer message after 2-3 seconds
-            setTimeout(() => {
-                setMessage('');
-            }, 3000);
-        });
+    // Listen for the new question event from the server
+    newSocket.on("newQuestion", (data) => {
+      setQuestion(data.question);
+      setMessage("");
+    });
 
-        // Clean up listeners on component unmount
-        return () => {
-            socket.off('newQuestion');
-            socket.off('winner');
-            socket.off('incorrect');
-        };
-    }, []);
+    // Listen for the winner event and display the winner message
+    newSocket.on("winner", (data) => {
+      setMessage(
+        `User ${data.user} answered correctly! New question in a few seconds...`
+      );
+    });
 
-    // Function to submit the answer
-    const submitAnswer = () => {
-        const parsedAnswer = parseInt(answer);
-        if (isNaN(parsedAnswer)) {
-            setMessage("Please enter a valid number.");
-            return;
-        }
+    // Listen for incorrect answers and display an error message
+    newSocket.on("incorrect", () => {
+      setMessage("Incorrect answer, try again!");
 
-        // Emit the answer to the server
-        socket.emit('submitAnswer', { answer: parsedAnswer });
-        setAnswer('');
+      // Clear the incorrect answer message after 2-3 seconds
+      setTimeout(() => {
+        setMessage("");
+      }, 3000);
+    });
+
+    // Clean up listeners on component unmount
+    return () => {
+      newSocket.disconnect();
     };
+  }, []);
 
-    return (
-        <div>
-            <h1>Math Quiz</h1>
-            <p>Question: {question}</p>
-            <input 
-                type="text" 
-                value={answer} 
-                onChange={(e) => setAnswer(e.target.value)} 
-                placeholder="Enter your answer" 
-            />
-            <button onClick={submitAnswer}>Submit Answer</button>
-            <p>{message}</p>
-        </div>
-    );
+  // Function to submit the answer
+  const submitAnswer = () => {
+    if (!socket) return;
+
+    const parsedAnswer = parseInt(answer);
+    if (isNaN(parsedAnswer)) {
+      setMessage("Please enter a valid number.");
+      return;
+    }
+
+    socket.emit("submitAnswer", { answer: parsedAnswer });
+    setAnswer("");
+  };
+
+  return (
+    <div>
+      <h1>Math Quiz</h1>
+      <p>Question: {question}</p>
+      <input
+        type="text"
+        value={answer}
+        onChange={(e) => setAnswer(e.target.value)}
+        placeholder="Enter your answer"
+      />
+      <button onClick={submitAnswer}>Submit Answer</button>
+      <p>{message}</p>
+    </div>
+  );
 }
 
 export default App;

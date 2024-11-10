@@ -7,10 +7,31 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+// const io = new Server(server);
 
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:3000", // React development server http://localhost:3000/
+  "https://caimera-math-quiz.netlify.app/", // Your production frontend URL
+];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
+
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true,
+    allowedHeaders: ["Content-Type"],
+  },
+});
 
 const port = process.env.PORT || 5000;
 console.log("port", port);
