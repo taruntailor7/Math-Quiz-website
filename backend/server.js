@@ -1,7 +1,6 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
 dotenv.config();
@@ -17,14 +16,7 @@ app.use(cors({
 }));
 
 const port = process.env.PORT || 5000;
-const mongoUrl = process.env.MONGODB_URI;
 console.log('port',port)
-console.log('mongoUrl', mongoUrl);
-
-// Connect to MongoDB for high-score tracking
-mongoose.connect(mongoUrl).then(() => {
-    console.log('Connected to MongoDB');
-}).catch((error) => console.log('MongoDB connection error:', error));
 
 let currentQuestion = generateQuestion();
 let isAnswered = false;

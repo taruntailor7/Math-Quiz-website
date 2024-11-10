@@ -12,7 +12,7 @@ function App() {
         // Listen for the new question event from the server
         socket.on('newQuestion', (data) => {
             setQuestion(data.question);
-            setMessage(''); // Clear any previous message for a new question
+            setMessage('');
         });
 
         // Listen for the winner event and display the winner message
@@ -27,7 +27,7 @@ function App() {
             // Clear the incorrect answer message after 2-3 seconds
             setTimeout(() => {
                 setMessage('');
-            }, 3000); // Clear after 3 seconds
+            }, 3000);
         });
 
         // Clean up listeners on component unmount
