@@ -1,3 +1,4 @@
+// Backend (server.js)
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -7,26 +8,18 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-// const io = new Server(server);
 
-const allowedOrigins = [
-  "http://localhost:3000", // React development server http://localhost:3000/
-  "https://caimera-math-quiz.netlify.app/", // Your production frontend URL
-];
-
-app.use(
-  cors({
-    origin: allowedOrigins,
-    methods: ["GET", "POST"],
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST"],
+  credentials: true,
+}));
 
 app.use(express.json());
 
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: "*",
     methods: ["GET", "POST"],
     credentials: true,
     allowedHeaders: ["Content-Type"],
@@ -34,48 +27,114 @@ const io = new Server(server, {
 });
 
 const port = process.env.PORT || 5000;
-console.log("port", port);
 
-// Question generator function
-function generateQuestion() {
-  const num1 = Math.floor(Math.random() * 10) + 1;
-  const num2 = Math.floor(Math.random() * 10) + 1;
-  return { question: `${num1} + ${num2}`, answer: num1 + num2 };
+// Game state management
+class GameState {
+  constructor() {
+    this.currentQuestion = this.generateQuestion();
+    this.locked = false;
+    this.answeredBy = null;
+  }
+
+  generateQuestion() {
+    const num1 = Math.floor(Math.random() * 10) + 1;
+    const num2 = Math.floor(Math.random() * 10) + 1;
+    return {
+      num1,
+      num2,
+      question: `${num1} + ${num2}`,
+      answer: num1 + num2
+    };
+  }
+
+  checkAnswer(userAnswer) {
+    return Number(userAnswer) === this.currentQuestion.answer;
+  }
+
+  newQuestion() {
+    this.currentQuestion = this.generateQuestion();
+    this.locked = false;
+    this.answeredBy = null;
+  }
 }
 
-// Handle socket connections
+const gameState = new GameState();
+
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  let currentQuestion = generateQuestion();
-  let isAnswered = false;
+  // Send current game state to newly connected user
+  socket.emit("gameState", {
+    question: gameState.currentQuestion.question,
+    locked: gameState.locked,
+    answeredBy: gameState.answeredBy,
+    correctAnswer: gameState.locked ? gameState.currentQuestion.answer : null
+  });
 
-  // Emit the initial question to the newly connected user
-  socket.emit("newQuestion", { question: currentQuestion.question });
+  // Log the current game state
+  console.log("Current game state:", {
+    question: gameState.currentQuestion.question,
+    answer: gameState.currentQuestion.answer,
+    locked: gameState.locked,
+    answeredBy: gameState.answeredBy
+  });
 
   socket.on("submitAnswer", (data) => {
-    if (isAnswered) {
-      return; // Ignore answers if the question has already been answered
+    console.log(`Answer received from ${socket.id}:`, {
+      receivedAnswer: data.answer,
+      correctAnswer: gameState.currentQuestion.answer,
+      locked: gameState.locked
+    });
+
+    // If game is locked, notify user
+    if (gameState.locked) {
+      socket.emit("alreadyAnswered", {
+        answeredBy: gameState.answeredBy,
+        correctAnswer: gameState.currentQuestion.answer
+      });
+      return;
     }
 
-    if (data.answer === currentQuestion.answer) {
-      isAnswered = true;
-      io.emit("winner", { user: socket.id }); // Broadcast winner message
+    const userAnswer = Number(data.answer);
+    const correctAnswer = gameState.currentQuestion.answer;
 
-      // Delay sending a new question by 3 seconds
+    console.log("Comparing answers:", {
+      userAnswer,
+      correctAnswer,
+      isCorrect: userAnswer === correctAnswer
+    });
+
+    if (userAnswer === correctAnswer) {
+      // Mark question as answered
+      gameState.locked = true;
+      gameState.answeredBy = socket.id;
+
+      // Notify all users about the winner
+      io.emit("winner", {
+        user: socket.id,
+        correctAnswer: correctAnswer
+      });
+
+      // Set new question after delay
       setTimeout(() => {
-        currentQuestion = generateQuestion();
-        isAnswered = false;
-        io.emit("newQuestion", { question: currentQuestion.question });
+        gameState.newQuestion();
+        console.log("New question generated:", gameState.currentQuestion);
+        io.emit("newQuestion", {
+          question: gameState.currentQuestion.question
+        });
       }, 3000);
     } else {
-      socket.emit("incorrect"); // Notify only the user who answered wrong
+      socket.emit("incorrect");
     }
   });
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "healthy" });
 });
 
 server.listen(port, () => {
