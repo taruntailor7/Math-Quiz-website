@@ -133,10 +133,6 @@ io.on("connection", (socket) => {
   });
 });
 
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "healthy" });
-});
-
 server.listen(port, () => {
   console.log("Server running on port:", port);
 });
