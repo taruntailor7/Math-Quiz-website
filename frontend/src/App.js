@@ -36,9 +36,9 @@ function App() {
       console.log("Received game state:", data);
       setQuestion(data.question);
       setIsLocked(data.locked);
-      if (data.locked) {
-        setMessage(`User ${data.answeredBy} answered this question correctly with ${data.correctAnswer}. Wait for next question...`);
-      }
+      // if (data.locked) {
+      //   setMessage(`User ${data.answeredBy} answered this question correctly with ${data.correctAnswer}. Wait for next question...`);
+      // }
     });
 
     newSocket.on("newQuestion", (data) => {
